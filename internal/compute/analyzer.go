@@ -29,48 +29,64 @@ func (a *analyzer) Analyze(_ context.Context, tokens []Token) (Query, error) {
 		return Query{}, ErrMustBeCommand
 	}
 
-	var q Query
 	switch cmd.Value {
 	case "GET":
-		if len(tokens) != 2 {
-			return Query{}, fmt.Errorf("%w: must be one", ErrWrongNumberOfArguments)
-		}
-
-		if len(tokens[1].Value) == 0 {
-			return Query{}, ErrWrongArgument
-		}
-
-		q.Command = CommandGet
+		return a.analyzeGET(tokens)
 	case "SET":
-		if len(tokens) != 3 {
-			return Query{}, fmt.Errorf("%w: must be one", ErrWrongNumberOfArguments)
-		}
-
-		if tokens[1].Type != KeyType || len(tokens[1].Value) == 0 {
-			return Query{}, fmt.Errorf("%w: key", ErrWrongKey)
-		}
-
-		if tokens[2].Type != ArgumentType || len(tokens[2].Value) == 0 {
-			return Query{}, fmt.Errorf("%w: second", ErrWrongArgument)
-		}
-
-		q.Command = CommandSet
-		q.Arg = tokens[2].Value
+		return a.analyzeSET(tokens)
 	case "DEL":
-		if len(tokens) != 2 {
-			return Query{}, fmt.Errorf("%w: must be one", ErrWrongNumberOfArguments)
-		}
-
-		if tokens[1].Type != KeyType || len(tokens[1].Value) == 0 {
-			return Query{}, ErrWrongArgument
-		}
-
-		q.Command = CommandDel
+		return a.analyzeDEL(tokens)
 	default:
 		return Query{}, fmt.Errorf("%w: %s", ErrUnknownCommand, cmd.Value)
 	}
+}
 
-	q.Key = tokens[1].Value
+func (a *analyzer) analyzeGET(tokens []Token) (Query, error) {
+	if len(tokens) != 2 {
+		return Query{}, fmt.Errorf("%w: must be one", ErrWrongNumberOfArguments)
+	}
 
-	return q, nil
+	if len(tokens[1].Value) == 0 {
+		return Query{}, ErrWrongArgument
+	}
+
+	return Query{
+		Command: CommandGet,
+		Key:     tokens[1].Value,
+	}, nil
+}
+
+func (a *analyzer) analyzeSET(tokens []Token) (Query, error) {
+	if len(tokens) != 3 {
+		return Query{}, fmt.Errorf("%w: must be one", ErrWrongNumberOfArguments)
+	}
+
+	if tokens[1].Type != KeyType || len(tokens[1].Value) == 0 {
+		return Query{}, fmt.Errorf("%w: key", ErrWrongKey)
+	}
+
+	if tokens[2].Type != ArgumentType || len(tokens[2].Value) == 0 {
+		return Query{}, fmt.Errorf("%w: second", ErrWrongArgument)
+	}
+
+	return Query{
+		Command: CommandSet,
+		Key:     tokens[1].Value,
+		Arg:     tokens[2].Value,
+	}, nil
+}
+
+func (a *analyzer) analyzeDEL(tokens []Token) (Query, error) {
+	if len(tokens) != 2 {
+		return Query{}, fmt.Errorf("%w: must be one", ErrWrongNumberOfArguments)
+	}
+
+	if tokens[1].Type != KeyType || len(tokens[1].Value) == 0 {
+		return Query{}, ErrWrongArgument
+	}
+
+	return Query{
+		Command: CommandDel,
+		Key:     tokens[1].Value,
+	}, nil
 }
