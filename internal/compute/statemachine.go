@@ -8,31 +8,68 @@ type (
 		tokens      []Token
 		tokenBuffer Token
 		wordBuffer  strings.Builder
+
+		transitions map[StateType]map[StateType]transition
+	}
+
+	transition struct {
+		apply func(sym byte)
 	}
 )
 
-func (s *stateMachine) process(t StateType, sym byte, pos uint) {
-	switch t {
-	case LetterState:
-		switch len(s.tokens) {
-		case 0:
-			s.tokenBuffer.Type = CommandType
-		case 1:
-			s.tokenBuffer.Type = KeyType
-		default:
-			s.tokenBuffer.Type = ArgumentType
-		}
-
-		s.wordBuffer.WriteByte(sym)
-	case SpaceState:
-		if s.state == LetterState {
-			s.flushBuffer()
-		}
-
-		s.tokenBuffer = Token{}
+func newStateMachine() *stateMachine {
+	s := &stateMachine{
+		state:  InitialState,
+		tokens: make([]Token, 0, 3),
 	}
 
-	s.state = t
+	s.transitions = map[StateType]map[StateType]transition{
+		InitialState: {
+			LetterState: {apply: s.applyLetter},
+			SpaceState:  {apply: s.applySpace},
+		},
+		LetterState: {
+			LetterState: {apply: s.applyLetter},
+			SpaceState:  {apply: s.applySpace},
+		},
+		SpaceState: {
+			LetterState: {apply: s.applyLetter},
+			SpaceState:  {apply: s.applySpace},
+		},
+		ErrorState: {},
+	}
+
+	return s
+}
+
+func (s *stateMachine) process(t StateType, sym byte) {
+	transition, _ := s.transitions[s.state][t]
+	if transition.apply != nil {
+		transition.apply(sym)
+	}
+}
+
+func (s *stateMachine) applyLetter(sym byte) {
+	switch len(s.tokens) {
+	case 0:
+		s.tokenBuffer.Type = CommandType
+	case 1:
+		s.tokenBuffer.Type = KeyType
+	default:
+		s.tokenBuffer.Type = ArgumentType
+	}
+
+	s.wordBuffer.WriteByte(sym)
+	s.state = LetterState
+}
+
+func (s *stateMachine) applySpace(_ byte) {
+	if s.state == LetterState {
+		s.flushBuffer()
+	}
+
+	s.tokenBuffer = Token{}
+	s.state = SpaceState
 }
 
 func (s *stateMachine) Tokens() []Token {

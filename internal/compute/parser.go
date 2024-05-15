@@ -15,11 +15,8 @@ type (
 
 func NewParser(log *zap.Logger) *parser {
 	return &parser{
-		stateMachine: &stateMachine{
-			state:  InitialState,
-			tokens: make([]Token, 0, 3),
-		},
-		logger: log,
+		stateMachine: newStateMachine(),
+		logger:       log,
 	}
 }
 
@@ -37,7 +34,7 @@ func (c *parser) Parse(_ context.Context, query string) ([]Token, error) {
 			return nil, fmt.Errorf("wrong symbol '%s' at pos %d", string(sym), i)
 		}
 
-		c.stateMachine.process(state, sym, uint(i))
+		c.stateMachine.process(state, sym)
 	}
 
 	return c.stateMachine.Tokens(), nil
