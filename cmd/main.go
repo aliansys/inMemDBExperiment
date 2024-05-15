@@ -9,46 +9,31 @@ import (
 	"fmt"
 	"go.uber.org/zap"
 	"os"
-	"os/signal"
-	"syscall"
 )
 
 func main() {
-	quit := make(chan os.Signal, 1)
-
-	go func() {
-		err := read(quit)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	}()
-
-	signal.Notify(quit, os.Interrupt, os.Kill, syscall.SIGTERM)
-	<-quit
+	err := read()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 
-func read(quit chan os.Signal) error {
+func read() error {
 	reader := bufio.NewReader(os.Stdin)
-	zp, err := zap.NewProduction()
+	logger, err := zap.NewProduction()
 	if err != nil {
 		return err
 	}
 
-	parser := compute.NewParser(zp)
-	analyzer := compute.NewAnalyzer(zp)
+	parser := compute.NewParser(logger)
+	analyzer := compute.NewAnalyzer(logger)
 
-	computer := compute.New(parser, analyzer, zp)
-	mem := memory.New(zp)
+	computer := compute.New(parser, analyzer, logger)
+	mem := memory.New(logger)
 	db := storage.New(mem)
 
 	for {
-		select {
-		case <-quit:
-			return nil
-		default:
-		}
-
 		fmt.Print("> ")
 		text, err := reader.ReadString('\n')
 		if err != nil {
