@@ -1,0 +1,8 @@
+engine:
+  type: "fake"
+network:
+  address: "fake"
+  max_connections: 1
+logging:
+  level: "fake"
+  output: "fake"
