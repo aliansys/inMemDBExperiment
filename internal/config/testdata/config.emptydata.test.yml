@@ -1,0 +1,8 @@
+engine:
+  type: ""
+network:
+  address: ""
+  max_connections: 0
+logging:
+  level: ""
+  output: ""

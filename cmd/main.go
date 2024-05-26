@@ -2,28 +2,26 @@ package main
 
 import (
 	"aliansys/inMemDBExperiment/internal/compute"
+	"aliansys/inMemDBExperiment/internal/config"
+	"aliansys/inMemDBExperiment/internal/network"
 	"aliansys/inMemDBExperiment/internal/storage"
 	"aliansys/inMemDBExperiment/internal/storage/memory"
-	"bufio"
 	"context"
-	"fmt"
 	"go.uber.org/zap"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
-	err := read()
+	cfg, err := config.Get("")
 	if err != nil {
-		fmt.Println(err)
-		return
+		panic(err)
 	}
-}
 
-func read() error {
-	reader := bufio.NewReader(os.Stdin)
 	logger, err := zap.NewProduction()
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	parser := compute.NewParser(logger)
@@ -33,27 +31,51 @@ func read() error {
 	mem := memory.New(logger)
 	db := storage.New(mem)
 
-	for {
-		fmt.Print("> ")
-		text, err := reader.ReadString('\n')
-		if err != nil {
-			return err
-		}
-
-		query, err := computer.HandleParse(context.Background(), text)
-		if err != nil {
-			fmt.Println("parse error:", err)
-			continue
-		}
-
-		val, err := db.Process(query)
-		if err != nil {
-			fmt.Println("query process error:", err)
-			continue
-		}
-
-		if len(val) > 0 {
-			fmt.Println("query result:", val)
-		}
+	server, err := network.NewTCPServer(cfg.Network.Address, cfg.Network.MaxConnections, logger)
+	if err != nil {
+		logger.Error("failed to create TCP server", zap.Error(err))
+		return
 	}
+
+	ctx := context.Background()
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+
+	err = server.Listen()
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		err = server.Close()
+		if err != nil {
+			logger.Error("failed to close server", zap.Error(err))
+		}
+
+		logger.Info("server closed")
+	}()
+
+	go func() {
+		err = server.Serve(ctx, func(ctx context.Context, msg []byte) ([]byte, error) {
+			logger.Debug("[handler] received message", zap.String("message", string(msg)))
+
+			query, err := computer.HandleParse(ctx, string(msg))
+			if err != nil {
+				return nil, err
+			}
+
+			val, err := db.Process(query)
+			if err != nil {
+				return []byte(err.Error()), nil
+			}
+
+			return []byte(val), nil
+		})
+
+		if err != nil {
+			logger.Error("failed to start server", zap.Error(err))
+		}
+	}()
+
+	<-quit
 }
