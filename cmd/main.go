@@ -37,9 +37,7 @@ func main() {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
+	ctx := context.Background()
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 
@@ -61,7 +59,7 @@ func main() {
 		err = server.Serve(ctx, func(ctx context.Context, msg []byte) ([]byte, error) {
 			logger.Debug("[handler] received message", zap.String("message", string(msg)))
 
-			query, err := computer.HandleParse(context.Background(), string(msg))
+			query, err := computer.HandleParse(ctx, string(msg))
 			if err != nil {
 				return nil, err
 			}
@@ -80,7 +78,4 @@ func main() {
 	}()
 
 	<-quit
-	cancel()
-
-	return
 }
