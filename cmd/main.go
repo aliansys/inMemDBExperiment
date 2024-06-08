@@ -6,6 +6,8 @@ import (
 	"aliansys/inMemDBExperiment/internal/network"
 	"aliansys/inMemDBExperiment/internal/storage"
 	"aliansys/inMemDBExperiment/internal/storage/memory"
+	"aliansys/inMemDBExperiment/internal/storage/wal"
+	"aliansys/inMemDBExperiment/internal/utils"
 	"context"
 	"go.uber.org/zap"
 	"os"
@@ -28,8 +30,34 @@ func main() {
 	analyzer := compute.NewAnalyzer(logger)
 
 	computer := compute.New(parser, analyzer, logger)
-	mem := memory.New(logger)
-	db := storage.New(mem)
+	restoreDataPipe := make(chan []wal.Log)
+	defer func() {
+		close(restoreDataPipe)
+	}()
+
+	maxSegmentSize, err := utils.ParseSize(cfg.WAL.MaxSegmentSize)
+	if err != nil {
+		panic(err)
+	}
+
+	reader := wal.NewReader(cfg.WAL.DataDir)
+	writer := wal.NewFsWriter(cfg.WAL.DataDir, maxSegmentSize)
+
+	walJournal := wal.New(wal.Config{
+		BatcherConfig: wal.BatcherFlushConfig{
+			Size:    cfg.WAL.FlushingBatchSize,
+			Timeout: cfg.WAL.FlushingBatchTimeout,
+		},
+	},
+		writer,
+		reader,
+		restoreDataPipe, logger)
+	defer walJournal.Close()
+
+	go walJournal.Start()
+	mem := memory.New(logger, restoreDataPipe)
+
+	db := storage.New(mem, walJournal)
 
 	server, err := network.NewTCPServer(cfg.Network.Address, cfg.Network.MaxConnections, logger)
 	if err != nil {
