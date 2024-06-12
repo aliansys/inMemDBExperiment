@@ -3,6 +3,7 @@ package config
 import (
 	"gopkg.in/yaml.v3"
 	"os"
+	"time"
 )
 
 type (
@@ -10,6 +11,7 @@ type (
 		Engine  EngineConfig  `yaml:"engine"`
 		Network NetworkConfig `yaml:"network"`
 		Logging LoggingConfig `yaml:"logging"`
+		WAL     WALConfig     `yaml:"wal"`
 	}
 
 	EngineConfig struct {
@@ -25,6 +27,13 @@ type (
 		Level  string `yaml:"level"`
 		Output string `yaml:"output"`
 	}
+
+	WALConfig struct {
+		FlushingBatchSize    int           `yaml:"flushing_batch_size"`
+		FlushingBatchTimeout time.Duration `yaml:"flushing_batch_timeout"`
+		MaxSegmentSize       string        `yaml:"max_segment_size"`
+		DataDir              string        `yaml:"data_dir"`
+	}
 )
 
 var defConfig = &Config{
@@ -33,11 +42,17 @@ var defConfig = &Config{
 	},
 	Network: NetworkConfig{
 		Address:        "0.0.0.0:3223",
-		MaxConnections: 1,
+		MaxConnections: 10,
 	},
 	Logging: LoggingConfig{
 		Level:  "info",
 		Output: "/log/output.log",
+	},
+	WAL: WALConfig{
+		FlushingBatchSize:    100,
+		FlushingBatchTimeout: time.Millisecond * 10,
+		MaxSegmentSize:       "10MB",
+		DataDir:              "data",
 	},
 }
 

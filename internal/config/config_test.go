@@ -3,6 +3,7 @@ package config
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestGet(t *testing.T) {
@@ -63,6 +64,12 @@ func TestGet(t *testing.T) {
 				Logging: LoggingConfig{
 					Level:  "fake",
 					Output: "fake",
+				},
+				WAL: WALConfig{
+					FlushingBatchSize:    1,
+					FlushingBatchTimeout: time.Second,
+					MaxSegmentSize:       "fake",
+					DataDir:              "fake",
 				},
 			},
 			wantErr: false,

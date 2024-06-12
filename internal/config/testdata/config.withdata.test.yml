@@ -6,3 +6,8 @@ network:
 logging:
   level: "fake"
   output: "fake"
+wal:
+  flushing_batch_size: 1
+  flushing_batch_timeout: 1s
+  max_segment_size: "fake"
+  data_dir: "fake"

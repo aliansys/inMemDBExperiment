@@ -1,13 +1,15 @@
 package memory
 
 import (
+	"aliansys/inMemDBExperiment/internal/storage/wal"
 	"go.uber.org/zap"
 	"testing"
 )
 
 func TestStorage_Get(t *testing.T) {
+	pipe := make(chan []wal.Log)
 	t.Run("get non-existing key", func(t *testing.T) {
-		s := New(zap.NewNop())
+		s := New(zap.NewNop(), pipe)
 
 		_, ok := s.Get("k")
 		if ok {
@@ -16,7 +18,7 @@ func TestStorage_Get(t *testing.T) {
 	})
 
 	t.Run("get existing key", func(t *testing.T) {
-		s := New(zap.NewNop())
+		s := New(zap.NewNop(), pipe)
 		s.Set("k", "v")
 
 		_, ok := s.Get("k")
@@ -24,11 +26,14 @@ func TestStorage_Get(t *testing.T) {
 			t.Error("key must exist")
 		}
 	})
+
+	close(pipe)
 }
 
 func TestStorage_Set(t *testing.T) {
+	pipe := make(chan []wal.Log)
 	t.Run("set non-existing key", func(t *testing.T) {
-		s := New(zap.NewNop())
+		s := New(zap.NewNop(), pipe)
 		s.Set("k", "v")
 
 		_, ok := s.Get("k")
@@ -38,7 +43,7 @@ func TestStorage_Set(t *testing.T) {
 	})
 
 	t.Run("set existing key", func(t *testing.T) {
-		s := New(zap.NewNop())
+		s := New(zap.NewNop(), pipe)
 		s.Set("k", "v")
 		s.Set("k", "v2")
 
@@ -47,11 +52,14 @@ func TestStorage_Set(t *testing.T) {
 			t.Error("key must be v2")
 		}
 	})
+
+	close(pipe)
 }
 
 func TestStorage_Del(t *testing.T) {
+	pipe := make(chan []wal.Log)
 	t.Run("del non-existing key", func(t *testing.T) {
-		s := New(zap.NewNop())
+		s := New(zap.NewNop(), pipe)
 		s.Del("k")
 
 		_, ok := s.Get("k")
@@ -61,7 +69,7 @@ func TestStorage_Del(t *testing.T) {
 	})
 
 	t.Run("del existing key", func(t *testing.T) {
-		s := New(zap.NewNop())
+		s := New(zap.NewNop(), pipe)
 		s.Set("k", "v")
 		s.Del("k")
 
@@ -70,4 +78,6 @@ func TestStorage_Del(t *testing.T) {
 			t.Error("key should not exist")
 		}
 	})
+
+	close(pipe)
 }
