@@ -43,15 +43,18 @@ func main() {
 	reader := wal.NewReader(cfg.WAL.DataDir)
 	writer := wal.NewFsWriter(cfg.WAL.DataDir, maxSegmentSize)
 
-	walJournal := wal.New(wal.Config{
-		BatcherConfig: wal.BatcherFlushConfig{
-			Size:    cfg.WAL.FlushingBatchSize,
-			Timeout: cfg.WAL.FlushingBatchTimeout,
+	walJournal := wal.New(
+		wal.Config{
+			BatcherConfig: wal.BatcherFlushConfig{
+				Size:    cfg.WAL.FlushingBatchSize,
+				Timeout: cfg.WAL.FlushingBatchTimeout,
+			},
 		},
-	},
 		writer,
 		reader,
-		restoreDataPipe, logger)
+		restoreDataPipe,
+		logger,
+	)
 	defer walJournal.Close()
 
 	go walJournal.Start()
