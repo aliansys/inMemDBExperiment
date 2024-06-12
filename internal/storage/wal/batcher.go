@@ -50,6 +50,7 @@ func (b *batcher) start() {
 		case <-ticker.C:
 			err = b.flush()
 		case <-b.mustFlush:
+			ticker.Reset(b.config.Timeout)
 			err = b.flush()
 		case <-b.closing:
 			_ = b.flush()
