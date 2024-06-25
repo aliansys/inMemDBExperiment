@@ -8,14 +8,21 @@ import (
 
 type (
 	Config struct {
-		Engine  EngineConfig  `yaml:"engine"`
-		Network NetworkConfig `yaml:"network"`
-		Logging LoggingConfig `yaml:"logging"`
-		WAL     WALConfig     `yaml:"wal"`
+		Engine      EngineConfig      `yaml:"engine"`
+		Replication ReplicationConfig `yaml:"replication"`
+		Network     NetworkConfig     `yaml:"network"`
+		Logging     LoggingConfig     `yaml:"logging"`
+		WAL         WALConfig         `yaml:"wal"`
 	}
 
 	EngineConfig struct {
 		Type string `yaml:"type"`
+	}
+
+	ReplicationConfig struct {
+		Host         string        `yaml:"host"`
+		Cluster      []string      `yaml:"cluster"`
+		SyncInterval time.Duration `yaml:"sync_interval"`
 	}
 
 	NetworkConfig struct {
@@ -43,6 +50,11 @@ var defConfig = &Config{
 	Network: NetworkConfig{
 		Address:        "0.0.0.0:3223",
 		MaxConnections: 10,
+	},
+	Replication: ReplicationConfig{
+		Host:         ":7777",
+		Cluster:      []string{":7777", ":7778"},
+		SyncInterval: 10 * time.Second,
 	},
 	Logging: LoggingConfig{
 		Level:  "info",

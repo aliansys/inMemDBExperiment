@@ -17,15 +17,21 @@ type (
 		Del(key string) chan error
 	}
 
+	Replica interface {
+		IsMaster() bool
+	}
+
 	db struct {
 		storage Storage
+		replica Replica
 		wal     WAL
 	}
 )
 
-func New(storage Storage, wal WAL) *db {
+func New(storage Storage, wal WAL, replica Replica) *db {
 	return &db{
 		storage: storage,
+		replica: replica,
 		wal:     wal,
 	}
 }
@@ -53,6 +59,10 @@ func (db *db) get(key string) (string, error) {
 }
 
 func (db *db) set(key, val string) (string, error) {
+	if !db.replica.IsMaster() {
+		return "", errors.New("forbidden. not master")
+	}
+
 	if db.wal != nil {
 		wait := db.wal.Set(key, val)
 		err := <-wait
@@ -65,6 +75,10 @@ func (db *db) set(key, val string) (string, error) {
 }
 
 func (db *db) del(key string) (string, error) {
+	if !db.replica.IsMaster() {
+		return "", errors.New("forbidden. not master")
+	}
+
 	if db.wal != nil {
 		wait := db.wal.Del(key)
 		err := <-wait
